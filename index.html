@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Robot Core Arena</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at top, #1f2a44, #05070d 70%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .game-wrap {
+      width: min(960px, 96vw);
+      height: min(620px, 92vh);
+      position: relative;
+      border: 2px solid rgba(120, 220, 255, 0.6);
+      border-radius: 18px;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(0, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 255, 0.06) 1px, transparent 1px),
+        radial-gradient(circle at center, #101b2d, #05070d);
+      background-size: 36px 36px, 36px 36px, cover;
+      box-shadow: 0 0 40px rgba(0, 220, 255, 0.22);
+    }
+
+    .hud {
+      position: absolute;
+      z-index: 20;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .panel {
+      padding: 10px 14px;
+      border: 1px solid rgba(120, 220, 255, 0.45);
+      background: rgba(4, 10, 20, 0.72);
+      border-radius: 14px;
+      box-shadow: inset 0 0 18px rgba(0, 220, 255, 0.12);
+      backdrop-filter: blur(8px);
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    .robot, .drone, .core, .laser, .spark {
+      position: absolute;
+    }
+
+    .robot {
+      width: 44px;
+      height: 44px;
+      z-index: 10;
+      transform: translate(-50%, -50%);
+    }
+
+    .robot .head {
+      width: 34px;
+      height: 28px;
+      margin: 0 auto;
+      background: linear-gradient(#c8f6ff, #4cc9f0);
+      border: 2px solid #eaffff;
+      border-radius: 10px 10px 8px 8px;
+      box-shadow: 0 0 18px rgba(76, 201, 240, 0.8);
+      position: relative;
+    }
+
+    .robot .head::before,
+    .robot .head::after {
+      content: "";
+      position: absolute;
+      top: 10px;
+      width: 6px;
+      height: 6px;
+      background: #06111f;
+      border-radius: 50%;
+      box-shadow: 0 0 8px white;
+    }
+
+    .robot .head::before { left: 8px; }
+    .robot .head::after { right: 8px; }
+
+    .robot .body {
+      width: 42px;
+      height: 18px;
+      margin: -1px auto 0;
+      background: linear-gradient(#3a86ff, #254a91);
+      border: 2px solid #9ee8ff;
+      border-radius: 8px;
+      position: relative;
+    }
+
+    .robot .body::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: #80ffdb;
+      box-shadow: 0 0 12px #80ffdb;
+    }
+
+    .drone {
+      width: 34px;
+      height: 34px;
+      transform: translate(-50%, -50%);
+      z-index: 8;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffccd5 10%, #ef233c 55%, #5b0b14 90%);
+      border: 2px solid #ffd6dd;
+      box-shadow: 0 0 18px rgba(255, 40, 80, 0.75);
+    }
+
+    .drone::before,
+    .drone::after {
+      content: "";
+      position: absolute;
+      top: 11px;
+      width: 13px;
+      height: 4px;
+      background: #ffb3c1;
+      border-radius: 4px;
+    }
+
+    .drone::before { left: -11px; }
+    .drone::after { right: -11px; }
+
+    .core {
+      width: 24px;
+      height: 24px;
+      transform: translate(-50%, -50%) rotate(45deg);
+      z-index: 6;
+      background: linear-gradient(135deg, #faff00, #00f5d4);
+      border: 2px solid white;
+      border-radius: 7px;
+      box-shadow: 0 0 22px rgba(0, 245, 212, 0.9);
+      animation: pulse 1s infinite alternate;
+    }
+
+    .laser {
+      width: 14px;
+      height: 14px;
+      transform: translate(-50%, -50%);
+      z-index: 12;
+      border-radius: 50%;
+      background: #80ffdb;
+      box-shadow: 0 0 16px #80ffdb;
+    }
+
+    .spark {
+      width: 8px;
+      height: 8px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 0 16px cyan;
+      pointer-events: none;
+      animation: fade 0.35s forwards;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(6px);
+      text-align: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: min(520px, 92vw);
+      padding: 30px;
+      border: 1px solid rgba(120, 220, 255, 0.55);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(15, 27, 49, 0.95), rgba(4, 8, 16, 0.95));
+      box-shadow: 0 0 42px rgba(0, 220, 255, 0.18);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 36px;
+      letter-spacing: 1px;
+    }
+
+    p {
+      line-height: 1.65;
+      color: #d6f7ff;
+      margin: 10px 0 22px;
+    }
+
+    button {
+      border: 0;
+      padding: 13px 24px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #00f5d4, #3a86ff);
+      color: #04111f;
+      font-weight: 900;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 245, 212, 0.45);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @keyframes pulse {
+      from { filter: brightness(0.9); transform: translate(-50%, -50%) rotate(45deg) scale(0.92); }
+      to { filter: brightness(1.25); transform: translate(-50%, -50%) rotate(45deg) scale(1.08); }
+    }
+
+    @keyframes fade {
+      to { opacity: 0; transform: translate(-50%, -50%) scale(2.5); }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrap" id="game">
+    <div class="hud">
+      <div class="panel">점수: <span id="score">0</span></div>
+      <div class="panel">체력: <span id="hp">100</span></div>
+      <div class="panel">웨이브: <span id="wave">1</span></div>
+    </div>
+
+    <div class="robot" id="robot">
+      <div class="head"></div>
+      <div class="body"></div>
+    </div>
+
+    <div class="screen" id="startScreen">
+      <div class="card">
+        <h1>ROBOT CORE ARENA</h1>
+        <p>
+          로봇을 조종해서 에너지 코어를 모으고, 적 드론을 레이저로 제거하세요.<br />
+          이동: WASD / 방향키 · 발사: 스페이스바
+        </p>
+        <button onclick="startGame()">게임 시작</button>
+      </div>
+    </div>
+
+    <div class="screen hidden" id="gameOverScreen">
+      <div class="card">
+        <h1>시스템 종료</h1>
+        <p id="finalText">최종 점수: 0</p>
+        <button onclick="startGame()">다시 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const robotEl = document.getElementById("robot");
+    const scoreEl = document.getElementById("score");
+    const hpEl = document.getElementById("hp");
+    const waveEl = document.getElementById("wave");
+    const startScreen = document.getElementById("startScreen");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const finalText = document.getElementById("finalText");
+
+    let width, height;
+    let robot;
+    let keys = {};
+    let drones = [];
+    let cores = [];
+    let lasers = [];
+    let running = false;
+    let score = 0;
+    let hp = 100;
+    let wave = 1;
+    let lastShot = 0;
+    let lastDroneSpawn = 0;
+    let lastCoreSpawn = 0;
+    let animationId;
+
+    function resize() {
+      const rect = game.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+    }
+
+    window.addEventListener("resize", resize);
+
+    document.addEventListener("keydown", (e) => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.code === "Space") e.preventDefault();
+    });
+
+    document.addEventListener("keyup", (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function createEl(className, x, y) {
+      const el = document.createElement("div");
+      el.className = className;
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      game.appendChild(el);
+      return el;
+    }
+
+    function spawnDrone() {
+      const side = Math.floor(Math.random() * 4);
+      let x, y;
+      if (side === 0) { x = rand(0, width); y = -30; }
+      if (side === 1) { x = width + 30; y = rand(0, height); }
+      if (side === 2) { x = rand(0, width); y = height + 30; }
+      if (side === 3) { x = -30; y = rand(0, height); }
+
+      drones.push({
+        x,
+        y,
+        speed: rand(1.1, 1.8) + wave * 0.12,
+        hp: 1 + Math.floor(wave / 4),
+        el: createEl("drone", x, y)
+      });
+    }
+
+    function spawnCore() {
+      const x = rand(50, width - 50);
+      const y = rand(70, height - 50);
+      cores.push({ x, y, el: createEl("core", x, y) });
+    }
+
+    function shoot() {
+      const now = performance.now();
+      if (now - lastShot < 220) return;
+      lastShot = now;
+
+      let dx = 0;
+      let dy = -1;
+      if (keys["arrowleft"] || keys["a"]) { dx = -1; dy = 0; }
+      if (keys["arrowright"] || keys["d"]) { dx = 1; dy = 0; }
+      if (keys["arrowup"] || keys["w"]) { dx = 0; dy = -1; }
+      if (keys["arrowdown"] || keys["s"]) { dx = 0; dy = 1; }
+
+      lasers.push({
+        x: robot.x,
+        y: robot.y,
+        dx,
+        dy,
+        speed: 8.5,
+        el: createEl("laser", robot.x, robot.y)
+      });
+    }
+
+    function spark(x, y) {
+      const el = createEl("spark", x, y);
+      setTimeout(() => el.remove(), 360);
+    }
+
+    function updateHud() {
+      scoreEl.textContent = score;
+      hpEl.textContent = Math.max(0, hp);
+      waveEl.textContent = wave;
+    }
+
+    function clearObjects() {
+      [...drones, ...cores, ...lasers].forEach(obj => obj.el.remove());
+      drones = [];
+      cores = [];
+      lasers = [];
+      document.querySelectorAll(".spark").forEach(el => el.remove());
+    }
+
+    function startGame() {
+      resize();
+      cancelAnimationFrame(animationId);
+      clearObjects();
+      startScreen.classList.add("hidden");
+      gameOverScreen.classList.add("hidden");
+
+      robot = { x: width / 2, y: height / 2, speed: 4.2 };
+      score = 0;
+      hp = 100;
+      wave = 1;
+      lastShot = 0;
+      lastDroneSpawn = 0;
+      lastCoreSpawn = 0;
+      running = true;
+      updateHud();
+      loop(0);
+    }
+
+    function gameOver() {
+      running = false;
+      finalText.textContent = `최종 점수: ${score} · 도달 웨이브: ${wave}`;
+      gameOverScreen.classList.remove("hidden");
+    }
+
+    function loop(time) {
+      if (!running) return;
+
+      const moveX = (keys["arrowright"] || keys["d"] ? 1 : 0) - (keys["arrowleft"] || keys["a"] ? 1 : 0);
+      const moveY = (keys["arrowdown"] || keys["s"] ? 1 : 0) - (keys["arrowup"] || keys["w"] ? 1 : 0);
+      const len = Math.hypot(moveX, moveY) || 1;
+
+      robot.x = clamp(robot.x + (moveX / len) * robot.speed, 24, width - 24);
+      robot.y = clamp(robot.y + (moveY / len) * robot.speed, 64, height - 24);
+      robotEl.style.left = robot.x + "px";
+      robotEl.style.top = robot.y + "px";
+
+      if (keys[" "] || keys["spacebar"]) shoot();
+
+      if (time - lastDroneSpawn > Math.max(380, 1050 - wave * 55)) {
+        spawnDrone();
+        lastDroneSpawn = time;
+      }
+
+      if (time - lastCoreSpawn > 2100) {
+        spawnCore();
+        lastCoreSpawn = time;
+      }
+
+      lasers.forEach((laser, index) => {
+        laser.x += laser.dx * laser.speed;
+        laser.y += laser.dy * laser.speed;
+        laser.el.style.left = laser.x + "px";
+        laser.el.style.top = laser.y + "px";
+
+        if (laser.x < -20 || laser.x > width + 20 || laser.y < -20 || laser.y > height + 20) {
+          laser.el.remove();
+          lasers.splice(index, 1);
+        }
+      });
+
+      drones.forEach((drone, dIndex) => {
+        const angle = Math.atan2(robot.y - drone.y, robot.x - drone.x);
+        drone.x += Math.cos(angle) * drone.speed;
+        drone.y += Math.sin(angle) * drone.speed;
+        drone.el.style.left = drone.x + "px";
+        drone.el.style.top = drone.y + "px";
+
+        if (distance(robot, drone) < 36) {
+          hp -= 12;
+          spark(drone.x, drone.y);
+          drone.el.remove();
+          drones.splice(dIndex, 1);
+        }
+
+        lasers.forEach((laser, lIndex) => {
+          if (distance(laser, drone) < 25) {
+            drone.hp -= 1;
+            spark(laser.x, laser.y);
+            laser.el.remove();
+            lasers.splice(lIndex, 1);
+
+            if (drone.hp <= 0) {
+              score += 15;
+              drone.el.remove();
+              drones.splice(dIndex, 1);
+            }
+          }
+        });
+      });
+
+      cores.forEach((core, cIndex) => {
+        if (distance(robot, core) < 34) {
+          score += 25;
+          hp = Math.min(100, hp + 7);
+          spark(core.x, core.y);
+          core.el.remove();
+          cores.splice(cIndex, 1);
+        }
+      });
+
+      wave = 1 + Math.floor(score / 160);
+      updateHud();
+
+      if (hp <= 0) {
+        gameOver();
+        return;
+      }
+
+      animationId = requestAnimationFrame(loop);
+    }
+
+    resize();
+    robot = { x: 480, y: 310, speed: 4.2 };
+    robotEl.style.left = "50%";
+    robotEl.style.top = "50%";
+  </script>
+</body>
+</html>
